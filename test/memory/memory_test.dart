@@ -14,6 +14,7 @@ library;
 import 'dart:developer';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -57,17 +58,30 @@ Future<VmService?> _connect(WidgetTester tester) async {
   return vm;
 }
 
-/// Runs a full, compacting GC. [forceGC] alone doesn't reliably clear weak
-/// references to old-space objects, so this goes through the VM service.
-Future<void> _gc(WidgetTester tester, VmService vm) async {
-  await tester.pump();
-  await tester.runAsync(() => forceGC(fullGcCycles: 3));
-  await tester.runAsync(
-    () => vm.getAllocationProfile(
-      Service.getIsolateId(Isolate.current)!,
-      gc: true,
-    ),
-  );
+/// Runs full GCs until the heap stops shrinking, and returns the Dart heap
+/// usage in MB. [forceGC] alone doesn't reliably clear weak references to
+/// old-space objects, so each round also collects through the VM service.
+///
+/// One round isn't always enough: right after many sheets close, the first
+/// collection can leave dozens of them in the heap though nothing references
+/// them any more (their retaining path is empty). The next round frees them.
+/// A single reading then looks hundreds of MB too high, which failed CI once
+/// at +402 MB.
+Future<double> _gc(WidgetTester tester, VmService vm) async {
+  final isolateId = Service.getIsolateId(Isolate.current)!;
+  double? previous;
+  for (var round = 0; round < 5; round++) {
+    await tester.pump();
+    await tester.runAsync(() async {
+      await forceGC(fullGcCycles: 3);
+      await vm.getAllocationProfile(isolateId, gc: true);
+    });
+    final usage = await tester.runAsync(() => vm.getMemoryUsage(isolateId));
+    final mb = usage!.heapUsage! / (1 << 20);
+    if (previous != null && previous - mb < 1) return math.min(previous, mb);
+    previous = mb;
+  }
+  return previous!;
 }
 
 /// Opens the sheet, searches, toggles "Select all", then confirms on even
@@ -192,14 +206,6 @@ void main() {
     (tester) async {
       final vm = await _connect(tester);
       if (vm == null) return markTestSkipped('needs --enable-vmservice');
-      final isolateId = Service.getIsolateId(Isolate.current)!;
-
-      Future<double> heapMb() async {
-        await _gc(tester, vm);
-        final usage = await tester.runAsync(() => vm.getMemoryUsage(isolateId));
-        return usage!.heapUsage! / (1 << 20);
-      }
-
       _useTallView(tester);
       await tester.pumpWidget(
         _app(
@@ -215,12 +221,12 @@ void main() {
       for (var i = 0; i < 20; i++) {
         await _openAndClose(tester, cycle: i);
       }
-      final before = await heapMb();
+      final before = await _gc(tester, vm);
       const cycles = 150;
       for (var i = 0; i < cycles; i++) {
         await _openAndClose(tester, cycle: i);
       }
-      final after = await heapMb();
+      final after = await _gc(tester, vm);
 
       final growth = after - before;
       // ignore: avoid_print
