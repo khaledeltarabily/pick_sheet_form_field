@@ -23,4 +23,6 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed .
       - run: flutter analyze
       - run: flutter test
+      # GC-based memory checks need the VM service; skipped in the run above.
+      - run: flutter test test/memory --enable-vmservice
       - run: dart pub publish --dry-run
