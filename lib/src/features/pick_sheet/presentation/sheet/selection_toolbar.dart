@@ -61,47 +61,68 @@ class _SelectionToolbarState<T> extends State<SelectionToolbar<T>> {
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            children: [
-              FilterTab(
-                label: strings.allWithCount(controller.items.length),
-                isActive: !showSelectedOnly,
-                onTap: () => controller.setShowSelectedOnly(false),
-              ),
-              const SizedBox(width: 8),
-              FilterTab(
-                label: strings.selectedWithCount(
-                  controller.selection.value.length,
-                ),
-                isActive: showSelectedOnly,
-                onTap: () => controller.setShowSelectedOnly(true),
-              ),
-              const Spacer(),
-              TextButton(
-                onPressed: canToggle
-                    ? () {
-                        Haptics.selection(enabled: theme.enableHaptics);
-                        controller.toggleVisible();
-                      }
-                    : null,
-                style: TextButton.styleFrom(
-                  // `null` leaves the color to the app's TextButtonTheme.
-                  foregroundColor: Theme.of(
-                    context,
-                  ).extension<PickSheetTheme>()?.accentColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(
-                  allVisibleSelected ? strings.clearAll : strings.selectAll,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+          child: LayoutBuilder(
+            builder: (context, constraints) => Row(
+              children: [
+                // The tabs scroll when long counts, long translations or a
+                // large text size don't fit next to the button.
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        FilterTab(
+                          label: strings.allWithCount(controller.items.length),
+                          isActive: !showSelectedOnly,
+                          onTap: () => controller.setShowSelectedOnly(false),
+                        ),
+                        const SizedBox(width: 8),
+                        FilterTab(
+                          label: strings.selectedWithCount(
+                            controller.selection.value.length,
+                          ),
+                          isActive: showSelectedOnly,
+                          onTap: () => controller.setShowSelectedOnly(true),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                // At most half the row, so the tabs always keep some room.
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: constraints.maxWidth / 2,
+                  ),
+                  child: TextButton(
+                    onPressed: canToggle
+                        ? () {
+                            Haptics.selection(enabled: theme.enableHaptics);
+                            controller.toggleVisible();
+                          }
+                        : null,
+                    style: TextButton.styleFrom(
+                      // `null` leaves the color to the app's TextButtonTheme.
+                      foregroundColor: Theme.of(
+                        context,
+                      ).extension<PickSheetTheme>()?.accentColor,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      allVisibleSelected ? strings.clearAll : strings.selectAll,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
