@@ -29,19 +29,23 @@ Future<List<T>?> showPickSheet<T>({
     maxSelections == null || maxSelections > 0,
     'maxSelections must be greater than 0.',
   );
+  // Built once: the route calls `builder` again on every MediaQuery change
+  // (each keyboard animation frame). Returning the same instance lets the
+  // framework skip rebuilding the whole sheet.
+  final sheet = PickSheetView<T>(
+    items: items,
+    title: title,
+    description: description,
+    icon: icon,
+    initialSelected: initialSelected,
+    searchEnabled: searchEnabled,
+    maxSelections: maxSelections,
+    strings: strings,
+  );
   return showModalBottomSheet<List<T>>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => PickSheetView<T>(
-      items: items,
-      title: title,
-      description: description,
-      icon: icon,
-      initialSelected: initialSelected,
-      searchEnabled: searchEnabled,
-      maxSelections: maxSelections,
-      strings: strings,
-    ),
+    builder: (_) => sheet,
   );
 }
