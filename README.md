@@ -397,8 +397,8 @@ without extra setup.
 ## Contributing
 
 Only `lib/pick_sheet_form_field.dart` is public API; everything under
-`lib/src/` is internal and may change. Run `flutter analyze` and
-`flutter test` before opening a pull request.
+`lib/src/` is internal and may change. Read [CONTRIBUTING.md](CONTRIBUTING.md)
+for the project rules, commit message format and how to open a pull request.
 
 ## License
 

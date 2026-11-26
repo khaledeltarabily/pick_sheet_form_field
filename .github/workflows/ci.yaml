@@ -13,6 +13,11 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          # Pinned: Flutter 3.47+ deprecates package:flutter/material.dart in
+          # favour of package:material_ui, which needs Flutter >= 3.47. The
+          # package supports Flutter >= 3.32, so stay on the newest release
+          # before that deprecation until the minimum Flutter is raised.
+          flutter-version: 3.44.9
           cache: true
       - run: flutter pub get
       - run: dart format --output=none --set-exit-if-changed .

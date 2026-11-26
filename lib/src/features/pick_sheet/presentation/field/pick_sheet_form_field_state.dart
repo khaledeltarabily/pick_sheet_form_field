@@ -86,6 +86,10 @@ class PickSheetFormFieldState<T> extends FormFieldState<List<T>> {
   void reset() {
     super.reset();
     controller.reset();
+    // The initial value may hold values already dropped once the items
+    // loaded; drop them again so the form never sees unmatched values.
+    _resolve();
+    _normalizeSelection();
     setValue(controller.value);
   }
 
