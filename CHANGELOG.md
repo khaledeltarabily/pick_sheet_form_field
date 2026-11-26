@@ -1,3 +1,8 @@
+## 0.1.1
+
+- Add screenshots of the field and the sheet to the README and pub.dev page.
+- Add the iOS runner to the example app.
+
 ## 0.1.0
 
 Initial release.

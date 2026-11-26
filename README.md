@@ -7,12 +7,10 @@ A multi-select `FormField` for Flutter. The selected values show as removable
 chips inside an outlined field; tapping the field opens a bottom sheet with
 search, "All / Selected" tabs and "Select all / Clear all".
 
-<!-- TODO: add screenshots captured from the example app.
 <p>
   <img src="https://raw.githubusercontent.com/khaledeltarabily/pick_sheet_form_field/main/doc/screenshots/field.png" width="280" alt="The field with selected chips">
   <img src="https://raw.githubusercontent.com/khaledeltarabily/pick_sheet_form_field/main/doc/screenshots/sheet.png" width="280" alt="The pick sheet">
 </p>
--->
 
 ## Features
 
