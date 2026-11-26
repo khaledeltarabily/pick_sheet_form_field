@@ -1,6 +1,5 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 
-import '../config/pick_sheet_config.dart';
 import 'pick_sheet_strings.dart';
 
 /// [PickSheetStrings] with every text resolved, so widgets don't handle
@@ -21,15 +20,9 @@ class ResolvedPickSheetStrings {
     required this.loading,
   });
 
-  /// Resolves the texts for [context]: [override] first, then the app-wide
-  /// [PickSheetConfig.strings], then English.
-  factory ResolvedPickSheetStrings.of(
-    BuildContext context, [
-    PickSheetStrings? override,
-  ]) {
-    final strings = PickSheetStrings.english
-        .merge(PickSheetConfig.maybeOf(context)?.strings)
-        .merge(override);
+  /// Resolves [strings]: each text left `null` falls back to English.
+  factory ResolvedPickSheetStrings.from(PickSheetStrings? strings) {
+    strings = PickSheetStrings.english.merge(strings);
     return ResolvedPickSheetStrings._(
       confirm: strings.confirm!,
       confirmWithCount: strings.confirmWithCount!,

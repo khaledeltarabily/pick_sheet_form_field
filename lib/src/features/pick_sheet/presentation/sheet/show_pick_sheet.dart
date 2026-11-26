@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/l10n/pick_sheet_strings.dart';
+import '../../../../core/config/pick_sheet_config.dart';
 import '../../data/models/pick_sheet_item.dart';
 import 'pick_sheet_view.dart';
 
@@ -13,6 +13,9 @@ import 'pick_sheet_view.dart';
 /// other items are disabled. With `1`, picking an item replaces the previous
 /// one (single-select).
 ///
+/// [config] sets the texts and the empty-search builder; anything left `null`
+/// uses the built-in default. The sheet keeps the config it opened with.
+///
 /// Items are compared with `==`, so `T` must override it.
 Future<List<T>?> showPickSheet<T>({
   required BuildContext context,
@@ -23,7 +26,7 @@ Future<List<T>?> showPickSheet<T>({
   List<T> initialSelected = const [],
   bool searchEnabled = false,
   int? maxSelections,
-  PickSheetStrings? strings,
+  PickSheetConfig? config,
 }) {
   assert(
     maxSelections == null || maxSelections > 0,
@@ -40,7 +43,7 @@ Future<List<T>?> showPickSheet<T>({
     initialSelected: initialSelected,
     searchEnabled: searchEnabled,
     maxSelections: maxSelections,
-    strings: strings,
+    config: config,
   );
   return showModalBottomSheet<List<T>>(
     context: context,

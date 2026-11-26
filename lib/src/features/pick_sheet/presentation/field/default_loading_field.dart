@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// The placeholder shown while a field is loading, when the app sets no
+/// The placeholder shown while a field is loading, when its config sets no
 /// `PickSheetConfig.loadingBuilder`. A plain box the size of the field.
 class DefaultLoadingField extends StatelessWidget {
   /// Creates the placeholder.
