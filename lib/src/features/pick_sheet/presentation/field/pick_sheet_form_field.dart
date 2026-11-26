@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/config/pick_sheet_config.dart';
 import '../../../../core/l10n/pick_sheet_strings.dart';
 import '../controllers/pick_sheet_controller.dart';
 import '../../domain/entities/pick_sheet_status.dart';
@@ -55,7 +56,7 @@ class PickSheetFormField<T> extends FormField<List<T>> {
     this.sheetDescription,
     this.sheetIcon = Icons.checklist_rounded,
     this.decoration,
-    this.strings,
+    this.config,
   }) : assert(
          controller == null || initialValue == null,
          'Pass either a controller or an initialValue, not both.',
@@ -111,8 +112,10 @@ class PickSheetFormField<T> extends FormField<List<T>> {
   /// the `ColorScheme`.
   final InputDecoration? decoration;
 
-  /// Texts for this field only. See [PickSheetStrings] for the fallbacks.
-  final PickSheetStrings? strings;
+  /// Texts and builders for this field and its sheet. Anything left `null`
+  /// uses the built-in default. To share one config across the app, wrap
+  /// this field in your own widget that passes it.
+  final PickSheetConfig? config;
 
   @override
   PickSheetFormFieldState<T> createState() => PickSheetFormFieldState<T>();

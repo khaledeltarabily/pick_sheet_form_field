@@ -118,7 +118,7 @@ class PickSheetFormFieldState<T> extends FormFieldState<List<T>> {
       initialSelected: shownSelection,
       searchEnabled: field.searchEnabled,
       maxSelections: field.maxSelections,
-      strings: field.strings,
+      config: field.config,
     );
     if (result == null || !mounted) return;
     controller.update(result, source: PickSheetChangeSource.user);

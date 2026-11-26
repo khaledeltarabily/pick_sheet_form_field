@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/config/pick_sheet_config.dart';
 import '../../../../core/l10n/pick_sheet_strings.dart';
 import '../../../../core/theme/pick_sheet_theme.dart';
 import '../../../../core/l10n/resolved_pick_sheet_strings.dart';
@@ -25,7 +26,7 @@ class PickSheetView<T> extends StatefulWidget {
     this.initialSelected = const [],
     this.searchEnabled = false,
     this.maxSelections,
-    this.strings,
+    this.config,
   });
 
   /// The options.
@@ -49,8 +50,8 @@ class PickSheetView<T> extends StatefulWidget {
   /// The most values that can be selected, or `null` for no limit.
   final int? maxSelections;
 
-  /// Texts for this sheet only.
-  final PickSheetStrings? strings;
+  /// Texts and builders for this sheet.
+  final PickSheetConfig? config;
 
   @override
   State<PickSheetView<T>> createState() => _PickSheetViewState<T>();
@@ -74,7 +75,7 @@ class _PickSheetViewState<T> extends State<PickSheetView<T>> {
   @override
   Widget build(BuildContext context) {
     final theme = PickSheetTheme.of(context);
-    final strings = ResolvedPickSheetStrings.of(context, widget.strings);
+    final strings = ResolvedPickSheetStrings.from(widget.config?.strings);
 
     return KeyboardAwareFrame(
       color: theme.surface,
@@ -96,6 +97,7 @@ class _PickSheetViewState<T> extends State<PickSheetView<T>> {
             child: PickSheetList<T>(
               controller: _controller,
               emptyText: strings.noResults,
+              emptyBuilder: widget.config?.emptyBuilder,
             ),
           ),
           SafeArea(

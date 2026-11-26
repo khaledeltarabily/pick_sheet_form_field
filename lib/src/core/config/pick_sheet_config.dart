@@ -2,31 +2,44 @@ import 'package:flutter/widgets.dart';
 
 import '../l10n/pick_sheet_strings.dart';
 
-/// App-wide texts and builders for every pick sheet field below it.
+/// Texts and builders for a pick sheet field or sheet.
 ///
-/// Optional. Put it in `MaterialApp.builder`, so it sits above the
-/// `Navigator` and the bottom sheets can see it too:
+/// Pass it as `config` to `PickSheetFormField` or `showPickSheet`. Anything
+/// left `null` uses the built-in default.
+///
+/// To use the same config across the whole app, write a wrapper once and use
+/// it everywhere:
 ///
 /// ```dart
-/// MaterialApp(
-///   builder: (context, child) => PickSheetConfig(
-///     strings: PickSheetStrings(confirm: 'تأكيد'),
-///     loadingBuilder: (context) => const MySkeleton(),
-///     child: child!,
-///   ),
-/// )
+/// class AppPickSheetField<T> extends StatelessWidget {
+///   const AppPickSheetField({super.key, required this.items, required this.labelText});
+///
+///   final List<PickSheetItem<T>> items;
+///   final String labelText;
+///
+///   @override
+///   Widget build(BuildContext context) {
+///     final l10n = AppLocalizations.of(context);
+///     return PickSheetFormField<T>(
+///       items: items,
+///       labelText: labelText,
+///       config: PickSheetConfig(
+///         strings: PickSheetStrings(confirm: l10n.confirm, search: l10n.search),
+///         loadingBuilder: (context) => const MySkeleton(),
+///       ),
+///     );
+///   }
+/// }
 /// ```
-class PickSheetConfig extends InheritedWidget {
-  /// Creates the app-wide configuration.
-  const PickSheetConfig({
-    super.key,
-    this.strings,
-    this.loadingBuilder,
-    this.emptyBuilder,
-    required super.child,
-  });
+///
+/// To use a different config each time, pass it directly where you use the
+/// field.
+@immutable
+class PickSheetConfig {
+  /// Creates a configuration. Only the values you pass replace the defaults.
+  const PickSheetConfig({this.strings, this.loadingBuilder, this.emptyBuilder});
 
-  /// Texts used by every field. A field's own `strings` override these.
+  /// Texts. A text left `null` falls back to [PickSheetStrings.english].
   final PickSheetStrings? strings;
 
   /// Builds the placeholder shown while a field is loading.
@@ -36,14 +49,4 @@ class PickSheetConfig extends InheritedWidget {
   /// Builds what the sheet shows when no item matches.
   /// Defaults to an icon and [PickSheetStrings.noResults].
   final WidgetBuilder? emptyBuilder;
-
-  /// The closest configuration above [context], if any.
-  static PickSheetConfig? maybeOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<PickSheetConfig>();
-
-  @override
-  bool updateShouldNotify(PickSheetConfig oldWidget) =>
-      strings != oldWidget.strings ||
-      loadingBuilder != oldWidget.loadingBuilder ||
-      emptyBuilder != oldWidget.emptyBuilder;
 }

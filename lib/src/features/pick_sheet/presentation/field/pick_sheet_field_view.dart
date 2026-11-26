@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/config/pick_sheet_config.dart';
 import '../../../../core/theme/pick_sheet_theme.dart';
 import '../../../../core/l10n/resolved_pick_sheet_strings.dart';
 import '../../../../core/utils/haptics.dart';
@@ -23,10 +22,10 @@ class PickSheetFieldView<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final field = state.widget as PickSheetFormField<T>;
-    final strings = ResolvedPickSheetStrings.of(context, field.strings);
+    final strings = ResolvedPickSheetStrings.from(field.config?.strings);
 
     if (state.isWaiting) {
-      return PickSheetConfig.maybeOf(context)?.loadingBuilder?.call(context) ??
+      return field.config?.loadingBuilder?.call(context) ??
           DefaultLoadingField(semanticLabel: strings.loading);
     }
 

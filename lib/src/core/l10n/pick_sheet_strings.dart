@@ -9,12 +9,8 @@ typedef PickSheetItemText = String Function(String label);
 /// The texts shown by pick sheet fields and sheets.
 ///
 /// The package doesn't translate anything: pass texts that are already
-/// translated. A text left `null` falls back to the next level, then to
-/// English:
-///
-/// 1. the `strings` passed to a `PickSheetFormField` or to `showPickSheet`,
-/// 2. `PickSheetConfig.strings`, set once for the whole app,
-/// 3. [PickSheetStrings.english].
+/// translated, through `PickSheetConfig.strings`. A text left `null` falls
+/// back to [PickSheetStrings.english].
 ///
 /// Texts with a count are functions, so each language decides where the
 /// number goes and which plural form to use.

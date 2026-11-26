@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
-import '../../../../core/config/pick_sheet_config.dart';
 import '../controllers/pick_sheet_list_controller.dart';
 import '../../data/models/pick_sheet_item.dart';
 import '../../../../core/widgets/listenable_selector.dart';
@@ -19,6 +18,7 @@ class PickSheetList<T> extends StatefulWidget {
     super.key,
     required this.controller,
     required this.emptyText,
+    this.emptyBuilder,
   });
 
   /// The sheet's state.
@@ -26,6 +26,9 @@ class PickSheetList<T> extends StatefulWidget {
 
   /// Shown when no item matches.
   final String emptyText;
+
+  /// Replaces the default empty state when set.
+  final WidgetBuilder? emptyBuilder;
 
   @override
   State<PickSheetList<T>> createState() => _PickSheetListState<T>();
@@ -69,9 +72,7 @@ class _PickSheetListState<T> extends State<PickSheetList<T>> {
       valueListenable: controller.visibleItems,
       builder: (context, items, _) {
         if (items.isEmpty) {
-          return PickSheetConfig.maybeOf(
-                context,
-              )?.emptyBuilder?.call(context) ??
+          return widget.emptyBuilder?.call(context) ??
               SheetEmptyState(text: widget.emptyText);
         }
 

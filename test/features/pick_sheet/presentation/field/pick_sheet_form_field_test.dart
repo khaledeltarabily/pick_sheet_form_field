@@ -186,20 +186,19 @@ void main() {
     ]);
   });
 
-  testWidgets('uses the strings passed to the field over the config', (
+  testWidgets('uses the config strings in the field and the sheet', (
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
-        builder: (context, child) => PickSheetConfig(
-          strings: const PickSheetStrings(sheetDescription: 'From config'),
-          child: child!,
-        ),
-        home: Scaffold(
-          body: PickSheetFormField<String>(
-            items: _cities,
-            labelText: 'Cities',
-            strings: PickSheetStrings(confirmWithCount: (n) => 'OK $n'),
+      _app(
+        PickSheetFormField<String>(
+          items: _cities,
+          labelText: 'Cities',
+          config: PickSheetConfig(
+            strings: PickSheetStrings(
+              sheetDescription: 'From config',
+              confirmWithCount: (n) => 'OK $n',
+            ),
           ),
         ),
       ),
@@ -212,6 +211,75 @@ void main() {
     await tester.tap(find.text('Giza'));
     await tester.pumpAndSettle();
     expect(find.text('OK 1'), findsOneWidget);
+  });
+
+  testWidgets('texts missing from the config fall back to English', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        PickSheetFormField<String>(
+          items: _cities,
+          labelText: 'Cities',
+          config: const PickSheetConfig(
+            strings: PickSheetStrings(confirm: 'تأكيد'),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(_field);
+    await tester.pumpAndSettle();
+    expect(find.text('تأكيد'), findsOneWidget);
+    expect(find.text('Select all'), findsOneWidget);
+  });
+
+  testWidgets('uses the loadingBuilder from the config', (tester) async {
+    await tester.pumpWidget(
+      _app(
+        PickSheetFormField<String>(
+          items: const [],
+          labelText: 'Cities',
+          status: PickSheetStatus.loading,
+          config: PickSheetConfig(
+            loadingBuilder: (context) => const Text('Skeleton'),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Skeleton'), findsOneWidget);
+    expect(find.byType(DefaultLoadingField), findsNothing);
+  });
+
+  testWidgets('showPickSheet uses its config, emptyBuilder included', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showPickSheet<String>(
+                context: context,
+                items: const [],
+                title: 'Cities',
+                config: PickSheetConfig(
+                  strings: const PickSheetStrings(confirm: 'Done'),
+                  emptyBuilder: (context) => const Text('Nothing here'),
+                ),
+              ),
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    expect(find.text('Done'), findsOneWidget);
+    expect(find.text('Nothing here'), findsOneWidget);
   });
 
   testWidgets('maxSelections blocks picks past the limit', (tester) async {

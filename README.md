@@ -129,7 +129,7 @@ always in the order of `items`.
 | `sheetDescription` | `String?` | `strings.sheetDescription` | Text under the sheet's title. |
 | `sheetIcon` | `IconData` | `Icons.checklist_rounded` | Icon in the sheet's header. |
 | `decoration` | `InputDecoration?` | `null` | Overrides parts of this field's look (borders, padding, hint…). Values left `null` come from the theme. |
-| `strings` | `PickSheetStrings?` | `null` | Texts for this field only. See [Translations](#translations). |
+| `config` | `PickSheetConfig?` | `null` | Texts and builders for this field and its sheet. See [Using a config](#using-a-config). |
 
 ### `PickSheetItem<T>`
 
@@ -157,7 +157,7 @@ PickSheetItem.listOf(
 
 | Value | What the field shows |
 |---|---|
-| `loading` | A placeholder the size of the field (replace it with `PickSheetConfig.loadingBuilder`). The field can't be opened. |
+| `loading` | A placeholder the size of the field (replace it with `config.loadingBuilder`). The field can't be opened. |
 | `ready` | The field, ready to open. |
 | `offline` | The field with an offline icon. Can't be opened. |
 | `failure` | The field with an error icon. Can't be opened. |
@@ -188,7 +188,7 @@ if (cities != null) setState(() => current = cities);
 | `initialSelected` | `List<T>` | `[]` | Values selected when the sheet opens. |
 | `searchEnabled` | `bool` | `false` | Shows the search box. |
 | `maxSelections` | `int?` | `null` | Same as on the field. |
-| `strings` | `PickSheetStrings?` | `null` | Texts for this sheet only. |
+| `config` | `PickSheetConfig?` | `null` | Texts and the empty-search builder for this sheet. |
 
 ### `PickSheetController<T>`
 
@@ -269,15 +269,15 @@ defaults; `a.merge(b)` overrides `a` with the non-null texts of `b`.
 
 ### `PickSheetConfig`
 
-An `InheritedWidget` for app-wide settings. Put it in `MaterialApp.builder` so
-the bottom sheets (which live in the `Navigator`) see it too.
+Texts and builders, passed as `config` to `PickSheetFormField` or
+`showPickSheet`. Anything left `null` uses the built-in default. See
+[Using a config](#using-a-config).
 
 | Property | Type | Description |
 |---|---|---|
-| `strings` | `PickSheetStrings?` | Texts for every field. A field's own `strings` win. |
+| `strings` | `PickSheetStrings?` | Texts. Each text left `null` falls back to English. |
 | `loadingBuilder` | `WidgetBuilder?` | Replaces the loading placeholder (for example with a shimmer skeleton). |
 | `emptyBuilder` | `WidgetBuilder?` | Replaces what the sheet shows when no item matches the search. |
-| `child` | `Widget` | **Required.** |
 
 ## Guides
 
@@ -363,36 +363,97 @@ PickSheetFormField<City>(
 )
 ```
 
-### Translations
+### Using a config
 
-The package doesn't translate anything itself. Texts are resolved in this
-order:
+`PickSheetConfig` is a plain value you pass to each field or sheet. Pick the
+way that fits your app.
 
-1. the `strings` passed to a `PickSheetFormField` or `showPickSheet`;
-2. `PickSheetConfig.strings`, set once for the whole app;
-3. `PickSheetStrings.english`.
-
-Set them once for the whole app, for example from your localization
-delegate:
+**Same config across the whole app:** write a wrapper once and use it
+everywhere instead of `PickSheetFormField`. The wrapper builds the config from
+your localizations, so every field gets the same texts and builders:
 
 ```dart
-MaterialApp(
-  builder: (context, child) => PickSheetConfig(
+class AppPickSheetField<T> extends StatelessWidget {
+  const AppPickSheetField({
+    super.key,
+    required this.items,
+    required this.labelText,
+    this.initialValue,
+    this.onChanged,
+    this.validator,
+  });
+
+  final List<PickSheetItem<T>> items;
+  final String labelText;
+  final List<T>? initialValue;
+  final ValueChanged<List<T>>? onChanged;
+  final FormFieldValidator<List<T>>? validator;
+
+  @override
+  Widget build(BuildContext context) {
+    return PickSheetFormField<T>(
+      items: items,
+      labelText: labelText,
+      initialValue: initialValue,
+      onChanged: onChanged,
+      validator: validator,
+      config: appPickSheetConfig(context),
+    );
+  }
+}
+
+/// One place for the app's config, shared by the field wrapper and
+/// any direct `showPickSheet` call.
+PickSheetConfig appPickSheetConfig(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
+  return PickSheetConfig(
     strings: PickSheetStrings(
-      confirm: 'تأكيد',
-      confirmWithCount: (count) => 'تأكيد ($count)',
-      search: 'بحث',
-      selectAll: 'تحديد الكل',
-      clearAll: 'مسح الكل',
+      confirm: l10n.confirm,
+      confirmWithCount: l10n.confirmWithCount,
+      search: l10n.search,
+      selectAll: l10n.selectAll,
+      clearAll: l10n.clearAll,
     ),
     loadingBuilder: (context) => const MyFieldSkeleton(),
-    child: child!,
+  );
+}
+```
+
+If you also open the sheet on its own, pass the same config:
+`showPickSheet(..., config: appPickSheetConfig(context))`.
+
+**A different config each time:** pass `config` directly where you use the
+field or sheet:
+
+```dart
+PickSheetFormField<City>(
+  items: cities,
+  labelText: 'Cities',
+  config: const PickSheetConfig(
+    strings: PickSheetStrings(sheetDescription: 'Pick up to 3 cities'),
   ),
 )
 ```
 
-The field and sheet follow `Directionality`, so right-to-left languages work
-without extra setup.
+### Translations
+
+The package doesn't translate anything itself. Pass texts that are already
+translated in `config.strings`. Each text left `null` falls back to
+`PickSheetStrings.english`, one text at a time.
+
+What happens in each case:
+
+| Case | Result |
+|---|---|
+| No `config`, or a config without `strings` | Every text is English. |
+| A config with some texts | Those texts are used. The others stay English (for example, setting only `confirm` keeps "Search" in English). |
+| Texts with a count (`confirmWithCount`, `allWithCount`, `selectedWithCount`) | Your function decides where the number goes and which plural form to use, for example `(n) => n == 1 ? 'مدينة واحدة' : '$n مدن'`. |
+| `sheetTitle` / `sheetDescription` set on the field | They win over `labelText` and `strings.sheetDescription`. |
+| Language changed from in-app settings | The sheet is closed at that point. Your widgets rebuild with the new config, so the field's chips, labels and screen reader texts update, and the sheet opens in the new language. |
+| Phone language changed while the sheet is open (the user leaves the app, changes it, and comes back) | If your app follows the system locale, the screen behind the sheet updates, but the open sheet keeps the texts it opened with until it's closed and opened again. The selection isn't lost. If your app sets a fixed `MaterialApp.locale`, nothing changes. |
+| `showPickSheet` used on its own | It uses only the `config` you pass it. Without one, it's English. |
+| Different configs on different fields | Each field uses only its own config. |
+| Right-to-left languages | Layout follows `Directionality`, with no extra setup. Only the texts come from the config. |
 
 ## Contributing
 
