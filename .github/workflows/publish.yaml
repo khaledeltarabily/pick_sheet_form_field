@@ -3,7 +3,12 @@ name: Publish to pub.dev
 # Runs when release-please pushes a release tag. Authenticates to pub.dev with
 # a GitHub OIDC token, so no pub.dev secret is stored in the repository. The
 # package must allow automated publishing from this repository on pub.dev
-# (Admin > Automated publishing, tag pattern v{{version}}).
+# (Admin > Automated publishing, tag pattern v{{version}}) and require the
+# GitHub Actions environment `pub.dev`.
+#
+# The job runs in the `pub.dev` environment. Create it under Settings >
+# Environments with the maintainer as required reviewer (optionally limited
+# to `v*` tags), so each publish waits for approval.
 #
 # This is a custom job rather than dart-lang/setup-dart's reusable publish
 # workflow: that workflow only installs the Dart SDK, and a package that
@@ -17,6 +22,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: pub.dev
     permissions:
       contents: read
       id-token: write # Lets pub.dev verify this run through OIDC.
