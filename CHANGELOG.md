@@ -1,3 +1,8 @@
+## Unreleased
+
+- Stop rebuilding the whole sheet, including every visible row, on each frame
+  of the keyboard animation.
+
 ## 0.1.1
 
 - Add screenshots of the field and the sheet to the README and pub.dev page.
