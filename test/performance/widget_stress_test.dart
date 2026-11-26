@@ -7,6 +7,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart'
+    show LeakTesting;
 import 'package:pick_sheet_form_field/pick_sheet_form_field.dart';
 
 List<PickSheetItem<int>> _items(int n, {bool icons = true}) =>
@@ -103,6 +105,10 @@ Future<void> _search(WidgetTester tester, String q) async {
 }
 
 void main() {
+  // Wall-clock budgets: leak tracking's bookkeeping would skew them.
+  // test/memory covers leaks under the same kind of churn.
+  LeakTesting.settings = LeakTesting.settings.withIgnoredAll();
+
   tearDownAll(() {
     // ignore: avoid_print
     print(
