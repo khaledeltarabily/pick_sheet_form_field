@@ -68,10 +68,25 @@ Requirements: Flutter `>=3.32.0` and Dart `^3.8.0`.
 
 ### Changelog and versioning
 
-- Add a line describing your change to `CHANGELOG.md` under an
-  `## Unreleased` heading at the top (create the heading if it is missing).
-- Do not change the version in `pubspec.yaml`. The maintainer bumps it at
-  release time, following [Semantic Versioning](https://semver.org).
+Releases are automated with
+[release-please](https://github.com/googleapis/release-please), so the
+commit messages on `main` are the changelog.
+
+- Do not edit `CHANGELOG.md` or the version in `pubspec.yaml`. Write a clear
+  Conventional Commit message (the PR title, since pull requests are
+  squash-merged) instead.
+- After each merge to `main`, release-please updates an open release pull
+  request that bumps the version following
+  [Semantic Versioning](https://semver.org) and adds the `feat`, `fix`,
+  `perf` and `revert` commits, and any breaking change, to `CHANGELOG.md`.
+  Other types (`docs`, `test`, `ci`, ...) do not show up in the changelog
+  and do not start a release on their own.
+- The maintainer decides when to release by merging that pull request. This
+  tags the commit `vX.Y.Z`, creates a GitHub release and publishes the
+  package to pub.dev.
+- To release changes that would not trigger a release on their own (for
+  example a README-only update for pub.dev), add a `Release-As: X.Y.Z`
+  footer to a commit on `main`.
 
 ## Branches
 
@@ -116,6 +131,10 @@ All commits **must** follow
 | `ci`       | CI configuration                                | none          |
 | `chore`    | Other maintenance                               | none          |
 | `revert`   | Reverts a previous commit                       | depends       |
+
+While the package is below `1.0.0`, versions follow the Dart convention for
+pre-release packages: a breaking change bumps the minor version (`0.1.x` to
+`0.2.0`) and `feat`, `fix` and `perf` bump the patch version.
 
 **Rules**
 
