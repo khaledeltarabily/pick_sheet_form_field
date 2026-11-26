@@ -1,7 +1,4 @@
-## Unreleased
-
-- Stop rebuilding the whole sheet, including every visible row, on each frame
-  of the keyboard animation.
+# Changelog
 
 ## 0.1.1
 

@@ -1,0 +1,29 @@
+name: Release Please
+
+# Keeps a release PR open that bumps the version in pubspec.yaml and writes
+# CHANGELOG.md from the Conventional Commits merged since the last release.
+# Merging that PR creates the vX.Y.Z tag and GitHub release, and the tag push
+# starts publish.yaml.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # Settings live in release-please-config.json and
+      # .release-please-manifest.json.
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          # A PAT or GitHub App token, not GITHUB_TOKEN: tags and PRs created
+          # with GITHUB_TOKEN do not start other workflows, so the release tag
+          # would not run publish.yaml and the release PR would not run CI.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

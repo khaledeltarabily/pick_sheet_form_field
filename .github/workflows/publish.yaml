@@ -1,0 +1,41 @@
+name: Publish to pub.dev
+
+# Runs when release-please pushes a release tag. Authenticates to pub.dev with
+# a GitHub OIDC token, so no pub.dev secret is stored in the repository. The
+# package must allow automated publishing from this repository on pub.dev
+# (Admin > Automated publishing, tag pattern v{{version}}) and require the
+# GitHub Actions environment `pub.dev`.
+#
+# The job runs in the `pub.dev` environment. Create it under Settings >
+# Environments with the maintainer as required reviewer (optionally limited
+# to `v*` tags), so each publish waits for approval.
+#
+# This is a custom job rather than dart-lang/setup-dart's reusable publish
+# workflow: that workflow only installs the Dart SDK, and a package that
+# depends on Flutter needs the Flutter SDK to resolve and publish.
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pub.dev
+    permissions:
+      contents: read
+      id-token: write # Lets pub.dev verify this run through OIDC.
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # Requests the OIDC token and registers it with pub for pub.dev.
+      - uses: dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          # Keep in step with ci.yaml.
+          flutter-version: 3.44.9
+          cache: true
+      - run: flutter pub get
+      - run: dart pub publish --dry-run
+      - run: dart pub publish --force

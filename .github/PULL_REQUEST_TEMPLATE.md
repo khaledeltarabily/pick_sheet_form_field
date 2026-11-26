@@ -33,4 +33,4 @@ Closes #
 - [ ] `dart pub publish --dry-run` passes
 - [ ] Tests added or updated (a regression test for bug fixes)
 - [ ] Public API changes are documented (dartdoc and README API reference)
-- [ ] `CHANGELOG.md` updated under `## Unreleased`
+- [ ] `CHANGELOG.md` and the `pubspec.yaml` version left unchanged (release-please writes them)
