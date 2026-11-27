@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2](https://github.com/khaledeltarabily/pick_sheet_form_field/compare/v0.2.1...v0.2.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **sheet:** scroll instead of overflowing when space is tight ([62f0127](https://github.com/khaledeltarabily/pick_sheet_form_field/commit/62f01270cb4c4180b3766d0884ee930668e0c206))
+* **sheet:** scroll instead of overflowing when space is tight ([3b24eab](https://github.com/khaledeltarabily/pick_sheet_form_field/commit/3b24eab528d05c11ca0626d769eb2f2597b794e0))
+
 ## [0.2.1](https://github.com/khaledeltarabily/pick_sheet_form_field/compare/v0.2.0...v0.2.1) (2026-11-27)
 
 
