@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.2.0](https://github.com/khaledeltarabily/pick_sheet_form_field/compare/v0.1.1...v0.2.0) (2026-11-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* PickSheetConfig is no longer an InheritedWidget. Remove it from MaterialApp.builder and pass it as `config:` to each field or sheet (wrap the field in your own widget to share one config). Replace
+
+### Features
+
+* pass PickSheetConfig to the widget instead of the tree ([9cbc862](https://github.com/khaledeltarabily/pick_sheet_form_field/commit/9cbc862f84de9a0b9e2e9c75207ae423b8b3bcb2))
+
+
+### Bug Fixes
+
+* drop unmatched values on reset and prevent toolbar overflow ([85a727c](https://github.com/khaledeltarabily/pick_sheet_form_field/commit/85a727c6d8fb6eef7b60660eddcf2fdcfc10c6b9))
+* drop unmatched values on reset and prevent toolbar overflow ([cc5c524](https://github.com/khaledeltarabily/pick_sheet_form_field/commit/cc5c5245f11678a80893ace4777b81227212bba8))
+
+
+### Performance Improvements
+
+* **sheet:** stop rebuilding the sheet on every keyboard frame ([97ca73f](https://github.com/khaledeltarabily/pick_sheet_form_field/commit/97ca73f850dcaacb633cc34805ab7d0b07745525))
+* stop rebuilding the sheet on every keyboard frame ([4339192](https://github.com/khaledeltarabily/pick_sheet_form_field/commit/433919287f34a8b1853b3a2aa5c62265be6d881e))
+
 ## 0.1.1
 
 - Add screenshots of the field and the sheet to the README and pub.dev page.
