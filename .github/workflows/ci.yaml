@@ -14,26 +14,95 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Jobs run in parallel. Test suites are split by tag (see dart_test.yaml).
+# Branch protection requires only "CI passed", which fails if any job it
+# needs failed, so jobs can be added, renamed or skipped without touching it.
 jobs:
+  changes:
+    name: Detect changed files
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read # paths-filter lists a pull request's files via the API.
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          # `code` is true when any changed file is something other than docs.
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!doc/**'
+              - '!LICENSE'
+
   lint:
     name: Lint · Format & analyze
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup-flutter
       - run: dart format --output=none --set-exit-if-changed .
       - run: flutter analyze
 
-  unit-tests:
-    name: Test · Unit & widget
+  workflow-lint:
+    name: Lint · Workflows
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      # Syntax, expressions and shell scripts in the workflow files.
+      - uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color
+      # Security problems: injection, over-broad permissions, unpinned actions.
+      - uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
+        with:
+          advanced-security: false
+          version: 1.33.1
+          # Low findings are style hints; fail on real risks only.
+          min-severity: medium
+
+  unit-tests:
+    name: Test · Unit & widget (${{ matrix.label }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: pinned Flutter
+            flutter-version: '' # The setup-flutter default.
+            coverage: true
+          # Keep in step with environment.flutter in pubspec.yaml.
+          - label: minimum Flutter 3.32
+            flutter-version: 3.32.8
+            coverage: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup-flutter
-      - run: flutter test --exclude-tags performance,memory --coverage
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          flutter-version: ${{ matrix.flutter-version }}
+      - run: flutter test --exclude-tags performance,memory ${{ matrix.coverage && '--coverage' || '' }}
+      - if: matrix.coverage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage
           path: coverage/lcov.info
@@ -41,29 +110,85 @@ jobs:
 
   memory-tests:
     name: Test · Memory leaks
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup-flutter
       # The GC-based checks need the VM service and are skipped without it.
       - run: flutter test --tags memory --enable-vmservice --reporter expanded
 
-  # Timings on shared runners are noisy: keep this out of the required checks.
+  # Timings on shared runners are noisy, so "CI passed" does not need this job.
   performance-tests:
     name: Test · Performance benchmarks
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup-flutter
-      - run: flutter test --tags performance --reporter expanded
+      - run: >-
+          flutter test --tags performance --reporter expanded
+          --file-reporter json:build/perf-results.json
+      - name: Write results to the job summary
+        if: always()
+        run: |
+          [ -f build/perf-results.json ] || exit 0
+          {
+            echo '## Performance benchmarks'
+            echo '```'
+            jq -r 'select(.type == "print") | .message' build/perf-results.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
+  # Docs ship in the package, so these two run even for docs-only changes.
   publish-dry-run:
     name: Package · Publish dry-run
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup-flutter
       - run: dart pub publish --dry-run
+
+  pana:
+    name: Package · pub.dev score
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-flutter
+      # pana converts the pubspec screenshots with the webp tools.
+      - run: sudo apt-get install -y --no-install-recommends webp
+      - run: dart pub global activate pana
+      # Fails if the package would lose any pub.dev points.
+      - run: dart pub global run pana --no-warning --exit-code-threshold 0 .
+
+  ci-passed:
+    name: CI passed
+    if: always()
+    needs:
+      - changes
+      - lint
+      - workflow-lint
+      - unit-tests
+      - memory-tests
+      - publish-dry-run
+      - pana
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Skipped jobs (docs-only changes) count as passed.
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1

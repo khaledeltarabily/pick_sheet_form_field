@@ -1,7 +1,9 @@
 name: PR title
 
 on:
-  pull_request_target:
+  # `pull_request`, not `pull_request_target`: the check only reads the title,
+  # so it needs no secrets or write access, even for pull requests from forks.
+  pull_request:
     types: [opened, edited, synchronize, reopened]
 
 permissions:
@@ -9,10 +11,11 @@ permissions:
 
 jobs:
   conventional-commit:
+    name: Lint · PR title
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      # Only reads the PR title; never checks out PR code, so it is safe on forks.
-      - uses: amannn/action-semantic-pull-request@v5
+      - uses: amannn/action-semantic-pull-request@0723387faaf9b38adef4775cd42cfd5155ed6017 # v5.5.3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

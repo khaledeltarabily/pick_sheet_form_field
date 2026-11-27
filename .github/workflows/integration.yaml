@@ -25,9 +25,19 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup-flutter
         with:
           working-directory: example
+      - name: Cache CocoaPods
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            example/ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: pods-${{ runner.os }}-${{ hashFiles('example/ios/Podfile', 'example/pubspec.yaml', 'pubspec.yaml') }}
+          restore-keys: pods-${{ runner.os }}-
       - name: Boot iPhone simulator
         id: simulator
         run: |
@@ -42,4 +52,32 @@ jobs:
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
       - name: Run integration tests
         working-directory: example
-        run: flutter test integration_test -d "${{ steps.simulator.outputs.udid }}" --reporter expanded
+        env:
+          DEVICE_ID: ${{ steps.simulator.outputs.udid }}
+        run: flutter test integration_test -d "$DEVICE_ID" --reporter expanded
+
+  # Nobody watches scheduled runs, so a nightly failure opens (or comments on)
+  # an issue.
+  report-nightly-failure:
+    name: Report nightly failure
+    needs: ios-simulator
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title='Nightly integration tests are failing'
+          body="The scheduled integration test run failed: $RUN_URL"
+          number=$(gh issue list --state open --search "\"$title\" in:title" \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
