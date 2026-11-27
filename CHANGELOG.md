@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/khaledeltarabily/pick_sheet_form_field/compare/v0.2.0...v0.2.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **sheet:** ignore a negative keyboard inset ([a16cbbd](https://github.com/khaledeltarabily/pick_sheet_form_field/commit/a16cbbd1d94e3c0692feccda5c3b4b0299d3ee07))
+* **sheet:** ignore a negative keyboard inset ([0ecb154](https://github.com/khaledeltarabily/pick_sheet_form_field/commit/0ecb154147e1abb8e339e61714241415e021e439))
+
 ## [0.2.0](https://github.com/khaledeltarabily/pick_sheet_form_field/compare/v0.1.1...v0.2.0) (2026-11-26)
 
 
