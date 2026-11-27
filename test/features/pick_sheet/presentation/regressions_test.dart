@@ -83,4 +83,28 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  // While the iOS keyboard closes, its bottom inset can dip below zero for a
+  // frame. The sheet used it as padding as-is, and Padding asserts on a
+  // negative value (seen in the on-device stress test after "Select all").
+  testWidgets('sheet tolerates a negative keyboard inset', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(viewInsets: const EdgeInsets.only(bottom: -3)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: PickSheetFormField<int>(items: _items(20), labelText: 'Cities'),
+        ),
+      ),
+    );
+    await tester.tap(find.byType(PickSheetFormField<int>));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('All (20)'), findsOneWidget);
+  });
 }

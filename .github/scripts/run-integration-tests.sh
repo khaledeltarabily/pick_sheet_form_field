@@ -2,12 +2,16 @@
 # Runs each integration test file on an iOS simulator, one file at a time,
 # under a watchdog.
 #
-# On hosted macOS runners `flutter test` sometimes hangs right after
-# "Xcode build done.": the app launches, but the tool never finds its Dart VM
-# service and waits forever. If a file prints nothing for IDLE_TIMEOUT seconds
-# (or fails), the watchdog stops it, reboots the simulator and runs that file
-# again, up to MAX_ATTEMPTS times. The longest quiet stretch in a healthy run
-# is about 4 minutes (a cold Xcode build on a slow runner).
+# On hosted macOS runners `flutter test` often hangs right after
+# "Xcode build done.": the app launches, but the tool never reads the Dart VM
+# service address from the simulator's log stream, and it waits for it with
+# no timeout. The watchdog stops a file that
+#   - hasn't started its first test LAUNCH_TIMEOUT seconds after the build
+#     (healthy runs start within a minute), or
+#   - prints nothing for IDLE_TIMEOUT seconds at any point (the longest quiet
+#     stretch in a healthy run is about 4 minutes: a cold Xcode build),
+# and then, as for a failed file, reboots the simulator and runs that file
+# again, up to MAX_ATTEMPTS times.
 #
 # Usage, from example/:
 #   DEVICE_ID=<simulator udid> ../.github/scripts/run-integration-tests.sh [test file...]
@@ -16,7 +20,8 @@ set -uo pipefail
 
 : "${DEVICE_ID:?set DEVICE_ID to a booted simulator UDID}"
 IDLE_TIMEOUT=${IDLE_TIMEOUT:-360}
-MAX_ATTEMPTS=${MAX_ATTEMPTS:-2}
+LAUNCH_TIMEOUT=${LAUNCH_TIMEOUT:-180}
+MAX_ATTEMPTS=${MAX_ATTEMPTS:-3}
 
 if [ $# -eq 0 ]; then
   set -- integration_test/*_test.dart
@@ -35,10 +40,20 @@ reboot_simulator() {
   xcrun simctl bootstatus "$DEVICE_ID" >/dev/null
 }
 
+# True once the app is built but no test has started: the expanded reporter
+# prints "MM:SS +N: <test name>" for each test, and "... loading <file>"
+# before the build.
+waiting_for_app() {
+  grep -q 'Xcode build done' "$log" &&
+    ! awk '/^[0-9]+:[0-9]+ \+[0-9]+/ && !/: loading / { found = 1 }
+           END { exit !found }' "$log"
+}
+
 # Runs one test file and returns its exit status, or 124 if the watchdog
-# stopped it.
+# stopped it (with the reason in $stall_reason).
 run_file() {
-  local pid tail_pid idle status=0 stalled=0
+  local pid tail_pid idle status=0
+  stall_reason=
   : >"$log"
   flutter test "$1" -d "$DEVICE_ID" --reporter expanded >"$log" 2>&1 &
   pid=$!
@@ -48,8 +63,12 @@ run_file() {
   while kill -0 "$pid" 2>/dev/null; do
     sleep 5
     idle=$(($(date +%s) - $(stat -f %m "$log")))
-    if [ "$idle" -ge "$IDLE_TIMEOUT" ]; then
-      stalled=1
+    if [ "$idle" -ge "$LAUNCH_TIMEOUT" ] && waiting_for_app; then
+      stall_reason="started no test ${LAUNCH_TIMEOUT}s after the app was built"
+    elif [ "$idle" -ge "$IDLE_TIMEOUT" ]; then
+      stall_reason="printed nothing for ${IDLE_TIMEOUT}s"
+    fi
+    if [ -n "$stall_reason" ]; then
       kill -TERM -- "-$pid" 2>/dev/null
       sleep 5
       kill -KILL -- "-$pid" 2>/dev/null
@@ -62,8 +81,8 @@ run_file() {
   kill "$tail_pid" 2>/dev/null
   wait "$tail_pid" 2>/dev/null
 
-  if [ "$stalled" -eq 1 ]; then
-    echo "Watchdog: no output for ${IDLE_TIMEOUT}s, stopped flutter test."
+  if [ -n "$stall_reason" ]; then
+    echo "Watchdog: $stall_reason, stopped flutter test."
     return 124
   fi
   return "$status"
@@ -79,7 +98,7 @@ for file in "$@"; do
     [ "$status" -eq 0 ] && break
 
     if [ "$status" -eq 124 ]; then
-      reason="printed nothing for ${IDLE_TIMEOUT}s"
+      reason=$stall_reason
     else
       reason="failed (exit $status)"
     fi

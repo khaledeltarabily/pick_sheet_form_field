@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// The sheet's rounded surface, lifted above the keyboard.
@@ -22,8 +24,11 @@ class KeyboardAwareFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // While the iOS keyboard closes, its inset can dip below zero for a
+    // frame, and Padding asserts on negative values.
+    final keyboard = math.max(0.0, MediaQuery.viewInsetsOf(context).bottom);
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      padding: EdgeInsets.only(bottom: keyboard),
       child: Material(
         color: color,
         clipBehavior: Clip.antiAlias,
