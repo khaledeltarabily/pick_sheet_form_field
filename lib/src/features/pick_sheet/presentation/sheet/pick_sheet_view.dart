@@ -10,6 +10,7 @@ import 'confirm_button.dart';
 import 'keyboard_aware_frame.dart';
 import 'pick_sheet_list.dart';
 import 'selection_toolbar.dart';
+import 'sheet_body.dart';
 import 'sheet_header.dart';
 import 'sheet_search_field.dart';
 
@@ -79,40 +80,41 @@ class _PickSheetViewState<T> extends State<PickSheetView<T>> {
 
     return KeyboardAwareFrame(
       color: theme.surface,
-      child: Column(
-        children: [
-          SheetHeader(
-            title: widget.title,
-            description: widget.description ?? strings.sheetDescription,
-            icon: widget.icon,
-          ),
-          if (widget.searchEnabled)
-            SheetSearchField(
-              hintText: strings.search,
-              onSearch: _controller.search,
+      child: SheetBody(
+        top: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SheetHeader(
+              title: widget.title,
+              description: widget.description ?? strings.sheetDescription,
+              icon: widget.icon,
             ),
-          SelectionToolbar<T>(controller: _controller, strings: strings),
-          const SizedBox(height: 12),
-          Expanded(
-            child: PickSheetList<T>(
-              controller: _controller,
-              emptyText: strings.noResults,
-              emptyBuilder: widget.config?.emptyBuilder,
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: ValueListenableBuilder<Set<T>>(
-              valueListenable: _controller.selection,
-              builder: (context, selected, _) => ConfirmButton(
-                label: selected.isEmpty
-                    ? strings.confirm
-                    : strings.confirmWithCount(selected.length),
-                onPressed: _confirm,
+            if (widget.searchEnabled)
+              SheetSearchField(
+                hintText: strings.search,
+                onSearch: _controller.search,
               ),
+            SelectionToolbar<T>(controller: _controller, strings: strings),
+            const SizedBox(height: 12),
+          ],
+        ),
+        list: PickSheetList<T>(
+          controller: _controller,
+          emptyText: strings.noResults,
+          emptyBuilder: widget.config?.emptyBuilder,
+        ),
+        bottom: SafeArea(
+          top: false,
+          child: ValueListenableBuilder<Set<T>>(
+            valueListenable: _controller.selection,
+            builder: (context, selected, _) => ConfirmButton(
+              label: selected.isEmpty
+                  ? strings.confirm
+                  : strings.confirmWithCount(selected.length),
+              onPressed: _confirm,
             ),
           ),
-        ],
+        ),
       ),
     );
   }

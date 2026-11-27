@@ -15,29 +15,38 @@ class SheetEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = PickSheetTheme.of(context);
 
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconBadge(
-            icon: Icons.search_off_rounded,
-            color: theme.accent,
-            circle: true,
-            padding: 28,
-            iconSize: 52,
-            iconOpacity: 0.6,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            text,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: theme.title,
+    // Centered when it fits; scrolls when the list area is shorter (a small
+    // screen with the keyboard up) instead of overflowing.
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconBadge(
+                  icon: Icons.search_off_rounded,
+                  color: theme.accent,
+                  circle: true,
+                  padding: 28,
+                  iconSize: 52,
+                  iconOpacity: 0.6,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  text,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: theme.title,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
