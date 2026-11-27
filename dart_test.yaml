@@ -1,0 +1,10 @@
+# Test suites are selected by tag. CI runs each in its own job:
+#   flutter test --exclude-tags performance,memory   # unit & widget
+#   flutter test --tags memory --enable-vmservice    # memory
+#   flutter test --tags performance                  # performance
+tags:
+  performance:
+    description: Timing benchmarks and stress tests on large inputs.
+    timeout: 5x
+  memory:
+    description: GC and heap-growth checks; need --enable-vmservice.

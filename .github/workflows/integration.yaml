@@ -1,0 +1,83 @@
+name: Integration tests
+
+# On-device tests from example/integration_test. They need a simulator, so
+# they run on macOS, off the pull request path: after each merge to main,
+# nightly, and on demand (Actions > Integration tests > Run workflow).
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-simulator:
+    name: Test · Integration (iOS simulator)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-flutter
+        with:
+          working-directory: example
+      - name: Cache CocoaPods
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            example/ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: pods-${{ runner.os }}-${{ hashFiles('example/ios/Podfile', 'example/pubspec.yaml', 'pubspec.yaml') }}
+          restore-keys: pods-${{ runner.os }}-
+      - name: Boot iPhone simulator
+        id: simulator
+        run: |
+          udid=$(xcrun simctl list devices available --json \
+            | jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].udid')
+          if [ -z "$udid" ] || [ "$udid" = null ]; then
+            echo "No iPhone simulator available" >&2
+            exit 1
+          fi
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+      - name: Run integration tests
+        working-directory: example
+        env:
+          DEVICE_ID: ${{ steps.simulator.outputs.udid }}
+        run: flutter test integration_test -d "$DEVICE_ID" --reporter expanded
+
+  # Nobody watches scheduled runs, so a nightly failure opens (or comments on)
+  # an issue.
+  report-nightly-failure:
+    name: Report nightly failure
+    needs: ios-simulator
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title='Nightly integration tests are failing'
+          body="The scheduled integration test run failed: $RUN_URL"
+          number=$(gh issue list --state open --search "\"$title\" in:title" \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
