@@ -107,4 +107,103 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('All (20)'), findsOneWidget);
   });
+
+  group('sheet with little vertical room', () {
+    // Physical size and bottom safe area in logical pixels, at 3x.
+    void screen(WidgetTester tester, Size size, {double safeBottom = 0}) {
+      tester.view.physicalSize = size * 3;
+      tester.view.devicePixelRatio = 3;
+      tester.view.padding = FakeViewPadding(bottom: safeBottom * 3);
+      tester.view.viewPadding = FakeViewPadding(bottom: safeBottom * 3);
+      addTearDown(tester.view.reset);
+    }
+
+    void keyboard(WidgetTester tester, double height) =>
+        tester.view.viewInsets = FakeViewPadding(bottom: height * 3);
+
+    Future<void> openSheet(
+      WidgetTester tester, {
+      int items = 20,
+      ValueChanged<List<int>>? onChanged,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PickSheetFormField<int>(
+              items: _items(items),
+              labelText: 'Cities',
+              searchEnabled: true,
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byType(PickSheetFormField<int>));
+      await tester.pumpAndSettle();
+    }
+
+    ScrollPosition sheetScroll(WidgetTester tester) =>
+        Scrollable.of(tester.element(find.text('Confirm'))).position;
+
+    testWidgets('does not scroll when it fits', (tester) async {
+      screen(tester, const Size(402, 874), safeBottom: 34);
+      await openSheet(tester);
+      expect(sheetScroll(tester).maxScrollExtent, 0);
+
+      keyboard(tester, 335);
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(sheetScroll(tester).maxScrollExtent, 0);
+    });
+
+    testWidgets('scrolls in landscape with the keyboard up', (tester) async {
+      screen(tester, const Size(874, 402), safeBottom: 21);
+      List<int>? changed;
+      await openSheet(tester, onChanged: (v) => changed = v);
+
+      await tester.tap(find.byType(TextField));
+      keyboard(tester, 209);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(sheetScroll(tester).maxScrollExtent, greaterThan(0));
+      // The search field keeps focus while the layout changes.
+      expect(
+        FocusManager.instance.primaryFocus?.context
+            ?.findAncestorWidgetOfExactType<EditableText>(),
+        isNotNull,
+      );
+
+      // The list and the confirm button are below the keyboard until the
+      // sheet is scrolled: drag it up by the header.
+      expect(tester.getCenter(find.text('City 0')).dy, greaterThan(193));
+      final sheetIcon = find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.byType(Icon),
+      );
+      await tester.drag(sheetIcon.first, const Offset(0, -200));
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(find.text('City 0')).dy, lessThan(193));
+      await tester.tap(find.text('City 0'));
+      await tester.pump();
+      await tester.ensureVisible(find.text('Confirm (1)'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Confirm (1)'));
+      await tester.pumpAndSettle();
+      expect(changed, [0]);
+    });
+
+    testWidgets('no-results state fits a small phone with the keyboard up', (
+      tester,
+    ) async {
+      screen(tester, const Size(375, 667));
+      await openSheet(tester);
+      await tester.enterText(find.byType(TextField), 'zzz');
+      keyboard(tester, 260);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('No results found'), findsOneWidget);
+    });
+  });
 }
