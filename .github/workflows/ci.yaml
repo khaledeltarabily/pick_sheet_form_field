@@ -72,7 +72,8 @@ jobs:
       - uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
         with:
           advanced-security: false
-          version: 1.33.1
+          # No `version`: the action's default is the zizmor release locked in
+          # the pinned commit, so Dependabot updates both together.
           # Low findings are style hints; fail on real risks only.
           min-severity: medium
 
