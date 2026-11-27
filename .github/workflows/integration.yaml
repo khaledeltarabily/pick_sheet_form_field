@@ -30,14 +30,6 @@ jobs:
       - uses: ./.github/actions/setup-flutter
         with:
           working-directory: example
-      - name: Cache CocoaPods
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            example/ios/Pods
-            ~/Library/Caches/CocoaPods
-          key: pods-${{ runner.os }}-${{ hashFiles('example/ios/Podfile', 'example/pubspec.yaml', 'pubspec.yaml') }}
-          restore-keys: pods-${{ runner.os }}-
       - name: Boot iPhone simulator
         id: simulator
         run: |

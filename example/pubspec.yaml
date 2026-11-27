@@ -1,6 +1,9 @@
 name: pick_sheet_form_field_example
 description: Example app for pick_sheet_form_field.
 publish_to: none
+# Sets the iOS CFBundleShortVersionString / CFBundleVersion and Android
+# versionName / versionCode; without it the build warns on every run.
+version: 1.0.0+1
 
 environment:
   sdk: ^3.8.0
