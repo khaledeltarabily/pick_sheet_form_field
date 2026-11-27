@@ -65,6 +65,18 @@ Requirements: Flutter `>=3.32.0` and Dart `^3.8.0`.
 - New features come with unit or widget tests. Test files mirror the
   `lib/src/` layout under `test/features/...`.
 - All tests must pass: `flutter test`.
+- Suites are selected by tag (declared in [`dart_test.yaml`](dart_test.yaml)),
+  and CI runs each one as its own job:
+
+  | Suite | Command |
+  | --- | --- |
+  | Unit & widget | `flutter test --exclude-tags performance,memory` |
+  | Memory | `flutter test --tags memory --enable-vmservice` |
+  | Performance | `flutter test --tags performance --reporter expanded` |
+  | Integration (from `example/`, on a simulator) | `flutter test integration_test -d <device-id>` |
+
+  Tag a new benchmark or stress test `@Tags(['performance'])` and a new
+  GC/heap test `@Tags(['memory'])` so it runs in the right job.
 
 ### Changelog and versioning
 
@@ -173,7 +185,8 @@ BREAKING CHANGE: PickSheetTheme.chipColor is now chipBackgroundColor.
    flutter pub get
    dart format --output=none --set-exit-if-changed .
    flutter analyze
-   flutter test
+   flutter test --exclude-tags performance,memory
+   flutter test --tags memory --enable-vmservice
    dart pub publish --dry-run
    ```
 

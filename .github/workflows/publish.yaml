@@ -30,12 +30,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       # Requests the OIDC token and registers it with pub for pub.dev.
       - uses: dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
-        with:
-          channel: stable
-          # Keep in step with ci.yaml.
-          flutter-version: 3.44.9
-          cache: true
-      - run: flutter pub get
+      # Same pinned Flutter version as CI.
+      - uses: ./.github/actions/setup-flutter
       - run: dart pub publish --dry-run
       - run: dart pub publish --force

@@ -1,0 +1,23 @@
+name: Set up Flutter
+description: Installs the pinned Flutter SDK and fetches dependencies.
+
+inputs:
+  working-directory:
+    description: Directory whose pubspec.yaml dependencies are fetched.
+    default: .
+
+runs:
+  using: composite
+  steps:
+    - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+      with:
+        channel: stable
+        # Pinned: Flutter 3.47+ deprecates package:flutter/material.dart in
+        # favour of package:material_ui, which needs Flutter >= 3.47. The
+        # package supports Flutter >= 3.32, so stay on the newest release
+        # before that deprecation until the minimum Flutter is raised.
+        flutter-version: 3.44.9
+        cache: true
+    - run: flutter pub get
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}

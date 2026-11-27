@@ -1,0 +1,45 @@
+name: Integration tests
+
+# On-device tests from example/integration_test. They need a simulator, so
+# they run on macOS, off the pull request path: after each merge to main,
+# nightly, and on demand (Actions > Integration tests > Run workflow).
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-simulator:
+    name: Test · Integration (iOS simulator)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./.github/actions/setup-flutter
+        with:
+          working-directory: example
+      - name: Boot iPhone simulator
+        id: simulator
+        run: |
+          udid=$(xcrun simctl list devices available --json \
+            | jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].udid')
+          if [ -z "$udid" ] || [ "$udid" = null ]; then
+            echo "No iPhone simulator available" >&2
+            exit 1
+          fi
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+      - name: Run integration tests
+        working-directory: example
+        run: flutter test integration_test -d "${{ steps.simulator.outputs.udid }}" --reporter expanded

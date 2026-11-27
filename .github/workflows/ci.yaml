@@ -5,24 +5,65 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its older runs; runs on main finish.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Jobs run in parallel. Test suites are split by tag (see dart_test.yaml).
 jobs:
-  check:
+  lint:
+    name: Lint · Format & analyze
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          # Pinned: Flutter 3.47+ deprecates package:flutter/material.dart in
-          # favour of package:material_ui, which needs Flutter >= 3.47. The
-          # package supports Flutter >= 3.32, so stay on the newest release
-          # before that deprecation until the minimum Flutter is raised.
-          flutter-version: 3.44.9
-          cache: true
-      - run: flutter pub get
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./.github/actions/setup-flutter
       - run: dart format --output=none --set-exit-if-changed .
       - run: flutter analyze
-      - run: flutter test
-      # GC-based memory checks need the VM service; skipped in the run above.
-      - run: flutter test test/memory --enable-vmservice
+
+  unit-tests:
+    name: Test · Unit & widget
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./.github/actions/setup-flutter
+      - run: flutter test --exclude-tags performance,memory --coverage
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage
+          path: coverage/lcov.info
+          if-no-files-found: error
+
+  memory-tests:
+    name: Test · Memory leaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./.github/actions/setup-flutter
+      # The GC-based checks need the VM service and are skipped without it.
+      - run: flutter test --tags memory --enable-vmservice --reporter expanded
+
+  # Timings on shared runners are noisy: keep this out of the required checks.
+  performance-tests:
+    name: Test · Performance benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./.github/actions/setup-flutter
+      - run: flutter test --tags performance --reporter expanded
+
+  publish-dry-run:
+    name: Package · Publish dry-run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./.github/actions/setup-flutter
       - run: dart pub publish --dry-run

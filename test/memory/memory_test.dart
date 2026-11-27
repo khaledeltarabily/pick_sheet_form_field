@@ -8,7 +8,7 @@
 //
 // The GC-based tests need the VM service and are skipped without it:
 //   flutter test test/memory --enable-vmservice --reporter expanded
-@Tags(['performance'])
+@Tags(['memory'])
 library;
 
 import 'dart:developer';
