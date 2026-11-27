@@ -5,13 +5,19 @@
 # On hosted macOS runners `flutter test` often hangs right after
 # "Xcode build done.": the app launches, but the tool never reads the Dart VM
 # service address from the simulator's log stream, and it waits for it with
-# no timeout. The watchdog stops a file that
-#   - hasn't started its first test LAUNCH_TIMEOUT seconds after the build
-#     (healthy runs start within a minute), or
-#   - prints nothing for IDLE_TIMEOUT seconds at any point (the longest quiet
-#     stretch in a healthy run is about 4 minutes: a cold Xcode build),
-# and then, as for a failed file, reboots the simulator and runs that file
-# again, up to MAX_ATTEMPTS times.
+# no timeout. (The app is launched with --disable-vm-service-publication, so
+# the log is the only way the tool finds it.)
+#
+# If no test has started LAUNCH_TIMEOUT seconds after the build (healthy runs
+# start within a minute), the watchdog prints what it can see (is the app
+# running, is the tool's log stream running, did the app log its VM service
+# address) and relaunches only the app with the same arguments: the tool is
+# still reading the log, matches the app by name, and takes the first address
+# it sees. If that doesn't help within another LAUNCH_TIMEOUT, or the file
+# prints nothing for IDLE_TIMEOUT seconds at any point (the longest quiet
+# stretch in a healthy run is about 4 minutes: a cold Xcode build), the
+# watchdog stops the file and, as for a failed file, reboots the simulator and
+# runs it again, up to MAX_ATTEMPTS times.
 #
 # Usage, from example/:
 #   DEVICE_ID=<simulator udid> ../.github/scripts/run-integration-tests.sh [test file...]
@@ -49,10 +55,43 @@ waiting_for_app() {
            END { exit !found }' "$log"
 }
 
+# The test app's process on this simulator, as "<binary> <arguments>".
+app_process() {
+  pgrep -lf "/Devices/$DEVICE_ID/.*/Runner\.app/Runner( |$)" |
+    head -n 1 | cut -d ' ' -f 2-
+}
+
+diagnose_launch() {
+  echo "Watchdog: app process: $(app_process | cut -c1-300)"
+  echo "Watchdog: flutter's log stream: $(pgrep -fl 'log stream --style json' | cut -c1-120 | tr '\n' ';')"
+  echo "Watchdog: VM service lines in the simulator log, last 10 minutes:"
+  xcrun simctl spawn "$DEVICE_ID" log show --last 10m --info --debug \
+    --style compact --predicate 'eventMessage CONTAINS[c] "VM service"' 2>&1 |
+    tail -n 5
+}
+
+# Relaunches the app with the arguments flutter launched it with.
+relaunch_app() {
+  local proc binary args bundle
+  bundle=$(plutil -extract CFBundleIdentifier raw \
+    build/ios/iphonesimulator/Runner.app/Info.plist)
+  proc=$(app_process)
+  if [ -n "$proc" ]; then
+    binary=${proc%% -*}
+    args=${proc#"$binary"}
+  else
+    # What flutter test passes, in case the app isn't running.
+    args='--enable-dart-profiling --disable-vm-service-publication --enable-checked-mode --verify-entry-points'
+  fi
+  xcrun simctl terminate "$DEVICE_ID" "$bundle" >/dev/null 2>&1 || true
+  # shellcheck disable=SC2086 # $args holds separate flags
+  xcrun simctl launch "$DEVICE_ID" "$bundle" $args
+}
+
 # Runs one test file and returns its exit status, or 124 if the watchdog
 # stopped it (with the reason in $stall_reason).
 run_file() {
-  local pid tail_pid idle status=0
+  local pid tail_pid idle status=0 relaunched=0
   stall_reason=
   : >"$log"
   flutter test "$1" -d "$DEVICE_ID" --reporter expanded >"$log" 2>&1 &
@@ -64,7 +103,17 @@ run_file() {
     sleep 5
     idle=$(($(date +%s) - $(stat -f %m "$log")))
     if [ "$idle" -ge "$LAUNCH_TIMEOUT" ] && waiting_for_app; then
-      stall_reason="started no test ${LAUNCH_TIMEOUT}s after the app was built"
+      diagnose_launch
+      # The tests may have started while the diagnostics ran.
+      waiting_for_app || continue
+      if [ "$relaunched" -eq 0 ]; then
+        relaunched=1
+        echo "::warning title=Integration test app relaunched::$1 started no test ${LAUNCH_TIMEOUT}s after the app was built; relaunched the app."
+        relaunch_app
+        touch "$log"
+        continue
+      fi
+      stall_reason="started no test ${LAUNCH_TIMEOUT}s after the app was built, nor after relaunching it"
     elif [ "$idle" -ge "$IDLE_TIMEOUT" ]; then
       stall_reason="printed nothing for ${IDLE_TIMEOUT}s"
     fi
