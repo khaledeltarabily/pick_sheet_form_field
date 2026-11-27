@@ -7,7 +7,7 @@
 # service and waits forever. If a file prints nothing for IDLE_TIMEOUT seconds
 # (or fails), the watchdog stops it, reboots the simulator and runs that file
 # again, up to MAX_ATTEMPTS times. The longest quiet stretch in a healthy run
-# is about 2.5 minutes (a cold Xcode build, or the 100k-item stress test).
+# is about 4 minutes (a cold Xcode build on a slow runner).
 #
 # Usage, from example/:
 #   DEVICE_ID=<simulator udid> ../.github/scripts/run-integration-tests.sh [test file...]
@@ -15,7 +15,7 @@
 set -uo pipefail
 
 : "${DEVICE_ID:?set DEVICE_ID to a booted simulator UDID}"
-IDLE_TIMEOUT=${IDLE_TIMEOUT:-300}
+IDLE_TIMEOUT=${IDLE_TIMEOUT:-360}
 MAX_ATTEMPTS=${MAX_ATTEMPTS:-2}
 
 if [ $# -eq 0 ]; then

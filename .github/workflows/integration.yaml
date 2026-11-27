@@ -45,7 +45,7 @@ jobs:
       # The simulator on hosted runners sometimes hangs after "Xcode build
       # done." (the app never connects) or fails on timing. The script runs
       # one test file at a time, and retries a file on a rebooted simulator
-      # when it fails or prints nothing for 5 minutes. A clean run takes about
+      # when it fails or prints nothing for 6 minutes. A clean run takes about
       # 10 minutes; the step timeout is a backstop for the script itself.
       - name: Run integration tests
         timeout-minutes: 45
