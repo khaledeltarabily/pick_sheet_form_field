@@ -2,7 +2,7 @@ name: pick_sheet_form_field
 description: >-
   A multi-select FormField that shows selected values as chips and picks them
   from a searchable bottom sheet. Themeable, translatable, Flutter-only.
-version: 0.2.0
+version: 0.2.1
 homepage: https://github.com/khaledeltarabily/pick_sheet_form_field
 repository: https://github.com/khaledeltarabily/pick_sheet_form_field
 issue_tracker: https://github.com/khaledeltarabily/pick_sheet_form_field/issues
