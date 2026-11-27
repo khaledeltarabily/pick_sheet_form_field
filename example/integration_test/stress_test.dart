@@ -12,6 +12,26 @@ import 'package:pick_sheet_form_field/pick_sheet_form_field.dart';
 final _binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 final _log = <String>[];
 final _issues = <String>[];
+final _issueDetails = <String>[];
+
+/// Every Flutter error reported during the current test, with its stack.
+/// [WidgetTester.takeException] returns only the exception, so
+/// [_drainErrors] looks the details up here.
+final _errorDetails = <FlutterErrorDetails>[];
+
+/// Like [testWidgets], but records each Flutter error's details first.
+void _testWidgets(String description, WidgetTesterCallback callback) =>
+    testWidgets(description, (tester) async {
+      _errorDetails.clear();
+      // The binding installs its own handler for each test and restores the
+      // previous one afterwards, so this wrapper only lives for this test.
+      final handler = FlutterError.onError;
+      FlutterError.onError = (details) {
+        _errorDetails.add(details);
+        handler?.call(details);
+      };
+      await callback(tester);
+    });
 
 List<PickSheetItem<int>> _items(int n) => PickSheetItem.listOf(
   List.generate(n, (i) => i),
@@ -51,7 +71,24 @@ Future<void> _perf(
 void _drainErrors(WidgetTester tester, String where) {
   Object? e;
   while ((e = tester.takeException()) != null) {
-    _issues.add('$where: ${'$e'.split('\n').first}');
+    final summary = '$where: ${'$e'.split('\n').first}';
+    _issues.add(summary);
+    final details = _errorDetails
+        .where((d) => identical(d.exception, e))
+        .lastOrNull;
+    if (details != null) {
+      final stack = '${details.stack ?? ''}'.trimRight().split('\n');
+      _issueDetails.add(
+        [
+          '## $summary',
+          if (details.context != null) 'Context: ${details.context}',
+          '$e',
+          'Stack:',
+          ...stack.take(40),
+          if (stack.length > 40) '... (${stack.length - 40} more frames)',
+        ].join('\n'),
+      );
+    }
   }
 }
 
@@ -116,12 +153,13 @@ void main() {
     print(
       '\n===== ON-DEVICE STRESS REPORT =====\n${_log.join('\n')}\n'
       '----- issues (${_issues.length}) -----\n${_issues.join('\n')}\n'
+      '${_issueDetails.isEmpty ? '' : '----- issue details -----\n${_issueDetails.join('\n\n')}\n'}'
       '===================================\n',
     );
   });
 
   for (final n in [7, 1000, 100000]) {
-    testWidgets('n=$n full flow', (tester) async {
+    _testWidgets('n=$n full flow', (tester) async {
       final items = _items(n);
       List<int>? changed;
       await tester.pumpWidget(
@@ -233,7 +271,7 @@ void main() {
     });
   }
 
-  testWidgets('single-select (max 1) and max 3 limit', (tester) async {
+  _testWidgets('single-select (max 1) and max 3 limit', (tester) async {
     List<int>? changed;
     await tester.pumpWidget(
       _App(items: _items(500), maxSelections: 1, onChanged: (v) => changed = v),
@@ -269,7 +307,7 @@ void main() {
     _drainErrors(tester, 'max limits');
   });
 
-  testWidgets('dismiss without confirm keeps old value', (tester) async {
+  _testWidgets('dismiss without confirm keeps old value', (tester) async {
     var calls = 0;
     await tester.pumpWidget(
       _App(items: _items(100), onChanged: (_) => calls++),
@@ -284,7 +322,7 @@ void main() {
     expect(calls, 0);
   });
 
-  testWidgets('loading -> ready, validate, reset', (tester) async {
+  _testWidgets('loading -> ready, validate, reset', (tester) async {
     final formKey = GlobalKey<FormState>();
     await tester.pumpWidget(
       _App(
@@ -320,7 +358,7 @@ void main() {
     _drainErrors(tester, 'loading/validate/reset');
   });
 
-  testWidgets('open/close churn x25 with 20k items', (tester) async {
+  _testWidgets('open/close churn x25 with 20k items', (tester) async {
     await tester.pumpWidget(_App(items: _items(20000)));
     await _perf(tester, 'open/close churn x25 (20k)', () async {
       for (var i = 0; i < 25; i++) {
@@ -335,7 +373,7 @@ void main() {
     _drainErrors(tester, 'churn');
   });
 
-  testWidgets('real-font toolbar fit at 390pt and large text', (tester) async {
+  _testWidgets('real-font toolbar fit at 390pt and large text', (tester) async {
     for (final scale in [1.0, 1.3, 2.0]) {
       await tester.pumpWidget(_App(items: _items(100000), textScale: scale));
       await tester.pumpAndSettle();
