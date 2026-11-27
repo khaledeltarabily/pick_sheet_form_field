@@ -22,7 +22,7 @@ jobs:
   ios-simulator:
     name: Test · Integration (iOS simulator)
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -50,11 +50,30 @@ jobs:
           xcrun simctl boot "$udid"
           xcrun simctl bootstatus "$udid"
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
+      # The simulator on hosted runners sometimes hangs after "Xcode build
+      # done." (the app never connects) or fails on timing. A full run takes
+      # about 10 minutes, so give each attempt 25 and retry once on a freshly
+      # rebooted simulator.
       - name: Run integration tests
+        id: attempt1
+        continue-on-error: true
+        timeout-minutes: 25
         working-directory: example
         env:
           DEVICE_ID: ${{ steps.simulator.outputs.udid }}
         run: flutter test integration_test -d "$DEVICE_ID" --reporter expanded
+      - name: Retry integration tests
+        if: steps.attempt1.outcome == 'failure'
+        timeout-minutes: 25
+        working-directory: example
+        env:
+          DEVICE_ID: ${{ steps.simulator.outputs.udid }}
+        run: |
+          echo "::warning title=Integration tests retried::The first attempt failed or timed out; see the 'Run integration tests' step log."
+          xcrun simctl shutdown "$DEVICE_ID" || true
+          xcrun simctl boot "$DEVICE_ID"
+          xcrun simctl bootstatus "$DEVICE_ID"
+          flutter test integration_test -d "$DEVICE_ID" --reporter expanded
 
   # Nobody watches scheduled runs, so a nightly failure opens (or comments on)
   # an issue.
